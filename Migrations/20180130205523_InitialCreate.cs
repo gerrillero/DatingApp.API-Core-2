@@ -2,7 +2,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace Dating.API.Migrations
+namespace DatingApp.API.Migrations
 {
     public partial class InitialCreate : Migration
     {
