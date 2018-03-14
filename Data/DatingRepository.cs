@@ -25,9 +25,14 @@ namespace DatingApp.API.Data
             this._context.Remove(entity);
         }
 
-        public Task<Photo> GetMainPhotoForUser(int userId)
+        public async Task<Like> GetLike(int userId, int recipientId)
         {
-            return this._context.Photos.Where(u => u.UserId == userId).FirstOrDefaultAsync(p => p.IsMain);
+            return await this._context.Likes.FirstOrDefaultAsync(u => u.LikerId == userId && u.LikeeId == recipientId);
+        }
+
+        public async Task<Photo> GetMainPhotoForUser(int userId)
+        {
+            return await this._context.Photos.Where(u => u.UserId == userId).FirstOrDefaultAsync(p => p.IsMain);
         }
 
         public async Task<Photo> GetPhoto(int id)
@@ -57,6 +62,18 @@ namespace DatingApp.API.Data
                                         && u.DateOfBirth.CalculateAge() <= userParams.MaxAge);
             }
 
+            if (userParams.Likers)
+            {
+                var userLikers = await GetUserLikes(userParams.UserId, userParams.Likers);
+                users = users.Where(u => userLikers.Any(liker => liker.LikerId == u.Id));
+            }
+
+            if (userParams.Likees)
+            {
+                var userLikees = await GetUserLikes(userParams.UserId, userParams.Likers);
+                users = users.Where(u => userLikees.Any(likee => likee.LikeeId == u.Id));
+            }
+
             if (!string.IsNullOrEmpty(userParams.OrderBy))
             {
                 switch (userParams.OrderBy)
@@ -76,6 +93,23 @@ namespace DatingApp.API.Data
         public async Task<bool> SaveAll()
         {
            return await this._context.SaveChangesAsync() > 0; 
+        }
+
+        private async Task<IEnumerable<Like>> GetUserLikes(int id, bool likers)
+        {
+            var user = await this._context.Users
+                .Include(x => x.Likee)
+                .Include(x => x.Liker)
+                .FirstOrDefaultAsync(u => u.Id == id);
+
+            if (likers)
+            {
+                return user.Likee.Where(u => u.LikeeId == id);
+            }
+            else
+            {
+                return user.Liker.Where(u => u.LikerId == id);
+            }
         }
     }
 }
